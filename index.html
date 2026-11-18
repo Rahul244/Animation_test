@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#101a27">
+  <title>The Wolf & The Little Duckling</title>
+  <style>
+    :root { color-scheme: dark; --gold: #ffd58a; --ink: #101a27; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100vh; color: #f7f4ee;
+      font-family: Georgia, "Times New Roman", serif;
+      background: radial-gradient(ellipse at 50% 0%, #34485b 0%, #182635 48%, #0b111a 100%);
+      display: grid; place-items: center; padding: 28px 16px;
+    }
+    .page { width: min(1040px, 100%); text-align: center; }
+    .eyebrow {
+      color: var(--gold); letter-spacing: .24em; text-transform: uppercase;
+      font: 600 11px/1.5 system-ui, sans-serif; margin-bottom: 12px;
+    }
+    h1 { font-size: clamp(2.2rem, 6vw, 4.7rem); line-height: .98; font-weight: 500; margin: 0; }
+    .subtitle {
+      color: #d6e0e8; font: 400 clamp(.9rem, 2vw, 1.05rem)/1.6 system-ui, sans-serif;
+      margin: 18px auto 26px; max-width: 620px;
+    }
+    .stage {
+      position: relative; overflow: hidden; border-radius: 18px;
+      aspect-ratio: 16 / 9; background: #172433;
+      border: 1px solid rgba(255,255,255,.18);
+      box-shadow: 0 28px 80px rgba(0,0,0,.48);
+    }
+    .scene {
+      position: absolute; inset: 0; opacity: 1;
+      background-image: url("storyboard.png");
+      background-size: 400% 300%;
+      background-repeat: no-repeat;
+      background-position: 0% 0%;
+      transform: scale(1.035);
+      transition: opacity .55s ease, transform 5s ease;
+    }
+    .scene.fade { opacity: .12; transform: scale(1.065); }
+    .vignette {
+      position: absolute; inset: 0; pointer-events: none;
+      background: linear-gradient(0deg, rgba(5,12,20,.55), transparent 32%, transparent 72%, rgba(5,12,20,.12));
+    }
+    .caption {
+      position: absolute; left: 5%; right: 5%; bottom: 7%;
+      font: 500 clamp(.95rem, 2.3vw, 1.45rem)/1.35 system-ui, sans-serif;
+      text-shadow: 0 2px 14px #000; transition: opacity .35s ease;
+    }
+    .controls {
+      display: flex; justify-content: center; align-items: center;
+      gap: 14px; flex-wrap: wrap; margin: 20px 0 12px;
+      font: 500 13px system-ui, sans-serif;
+    }
+    button {
+      border: 1px solid rgba(255,255,255,.28); border-radius: 999px;
+      padding: 11px 20px; color: #17202a; background: var(--gold);
+      font: 700 13px system-ui, sans-serif; cursor: pointer;
+    }
+    button.secondary { background: rgba(255,255,255,.08); color: #f7f4ee; }
+    button:focus-visible { outline: 3px solid white; outline-offset: 3px; }
+    .progress { width: min(360px, 75vw); height: 3px; background: #ffffff30; border-radius: 5px; overflow: hidden; }
+    .bar { width: 0%; height: 100%; background: var(--gold); }
+    .chapter { color: #c2d0dc; font: 12px system-ui, sans-serif; min-width: 95px; }
+    footer { color: #91a1af; font: 11px/1.6 system-ui, sans-serif; margin-top: 24px; }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { transition-duration: .01ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <div class="eyebrow">A little winter story</div>
+    <h1>The Wolf &amp; The<br>Little Duckling</h1>
+    <p class="subtitle">A chance encounter in a snowy forest becomes an unexpected friendship.</p>
+
+    <section class="stage" aria-label="Animated illustrated story">
+      <div class="scene" id="scene"></div>
+      <div class="vignette"></div>
+      <div class="caption" id="caption" aria-live="polite">Alone in the snow, a tiny life is in danger…</div>
+    </section>
+
+    <div class="controls">
+      <button id="play">Pause story</button>
+      <button class="secondary" id="restart">Restart</button>
+      <div class="progress" aria-label="Story progress"><div class="bar" id="bar"></div></div>
+      <span class="chapter" id="chapter">Scene 1 of 12</span>
+    </div>
+    <footer>Use the controls to pause or replay the story. Best viewed in landscape.</footer>
+  </main>
+
+  <script>
+    // The storyboard is a 4-column × 3-row image. Each panel becomes one scene.
+    const captions = [
+      "Alone in the snow, a tiny life is in danger…",
+      "The predator moves closer through the trees.",
+      "The little duckling has nowhere left to hide.",
+      "A brave guardian bursts through the falling snow!",
+      "The grey wolf stands between danger and the duckling.",
+      "The threat retreats. The forest grows quiet.",
+      "The wolf lowers his nose, gently curious.",
+      "A tiny beak meets a giant, gentle nose.",
+      "Fear turns into trust.",
+      "The duckling nestles into the wolf’s warm fur.",
+      "A fluffy tail becomes the coziest blanket.",
+      "Together, they drift into a peaceful winter sleep."
+    ];
+    const scene = document.getElementById("scene");
+    const caption = document.getElementById("caption");
+    const chapter = document.getElementById("chapter");
+    const bar = document.getElementById("bar");
+    const playButton = document.getElementById("play");
+    const duration = 2100;
+    let index = 0, playing = true, timer = null;
+
+    function showFrame(n) {
+      index = (n + captions.length) % captions.length;
+      scene.classList.add("fade");
+      caption.style.opacity = "0";
+      setTimeout(() => {
+        const col = index % 4, row = Math.floor(index / 4);
+        scene.style.backgroundPosition = `${(col / 3) * 100}% ${(row / 2) * 100}%`;
+        caption.textContent = captions[index];
+        chapter.textContent = `Scene ${index + 1} of ${captions.length}`;
+        bar.style.width = `${((index + 1) / captions.length) * 100}%`;
+        scene.classList.remove("fade");
+        caption.style.opacity = "1";
+      }, 300);
+    }
+    function stop() {
+      playing = false;
+      clearInterval(timer);
+      timer = null;
+      playButton.textContent = "Play story";
+    }
+    function start() {
+      if (playing && timer) return;
+      playing = true;
+      playButton.textContent = "Pause story";
+      timer = setInterval(() => showFrame(index + 1), duration);
+    }
+    playButton.addEventListener("click", () => playing ? stop() : start());
+    document.getElementById("restart").addEventListener("click", () => {
+      stop(); showFrame(0); start();
+    });
+    showFrame(0);
+    start();
+  </script>
+</body>
+</html>
